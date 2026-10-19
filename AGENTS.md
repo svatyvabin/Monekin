@@ -266,6 +266,11 @@ Before completing any task:
 - Branch off **`develop`**, never `main`. Naming: `fix/XXXX` (issue number) or `feature/some-new-feature`.
 - `main` and `develop` are protected; open PRs against **`develop`**.
 - Follow the commit message convention in `docs/COMMIT_MSG.md` and branch workflow in `docs/GIT_BRANCHES_WORKFLOW.md`.
+- **This repo is a fork** (`origin` = our fork, `upstream` = original Monekin). Keep upstream in sync following the "Fork workflow" in `docs/GIT_BRANCHES_WORKFLOW.md`. In short:
+  - `develop` only mirrors `upstream/develop` (fast-forward only, never commit own code here).
+  - `my-main` is our integration branch (upstream + our features); sync it with `git merge develop`.
+  - Own features live in `feature/xxx` branches; prefer new files over editing upstream files to minimise merge conflicts.
+  - After a sync, re-run `build_runner` / `slang` instead of hand-resolving `*.g.dart` conflicts, and check the drift schema version / `assets/sql/migrations/` for clashes with upstream.
 - There is no separate QA — **you are the QA**. Test carefully on supported platforms.
 - Do not create commits unless explicitly asked. When asked to commit AI-generated work, add the trailer `Includes-AI-Code: true` to the commit message.
 

@@ -51,3 +51,70 @@ Again, this is a protected branch, so no external code can enter it without the 
 ### Working branches
 
 Branches where the entire development process is carried out, since as seen before, the other branches are only in charge of accepting merges/pull requests with few exceptions. Usually named <code>feature/xxxx</code> or <code>fix/xxxx</code>, but feel free to call them whatever you see fit. Once merged with develop they are deleted from the remote repository.
+
+## Fork workflow (keeping up with upstream)
+
+This repository is a fork. Our own features are developed on top of the original project (`upstream`) while still receiving its new commits.
+
+### One-time setup
+
+```bash
+git remote add upstream https://github.com/enrique-lozano/Monekin.git
+git remote -v   # origin = our fork, upstream = original project
+git config --global rerere.enabled true   # remember conflict resolutions
+```
+
+### Fork branches
+
+| Branch | Purpose |
+| --- | --- |
+| `develop` | Pure mirror of `upstream/develop`. Never commit own code here. |
+| `my-main` | Our integration branch: upstream + all our features. Used for daily work and release builds. |
+| `feature/xxx` | One branch per own feature, created from `my-main` (or from `develop` if it may be sent upstream). |
+
+### Syncing with upstream
+
+```bash
+git fetch upstream
+
+# 1) Update the mirror (fast-forward only, never conflicts)
+git checkout develop
+git merge --ff-only upstream/develop
+git push origin develop
+
+# 2) Bring upstream changes into our integration branch
+git checkout my-main
+git merge develop
+```
+
+- Prefer **merge** (safe, conflicts are solved once, no history rewriting). Use `rebase` + `git push --force-with-lease` only on branches that nobody else uses.
+- Sync small and often (e.g. weekly or after each upstream release). The longer you wait, the harder the conflicts.
+- After syncing, rebase/merge `my-main` into any in-progress `feature/xxx` branches.
+
+### Reducing merge conflicts
+
+1. Implement features in **new files** whenever possible; only touch upstream files for the minimal wiring (routes, imports, a few lines).
+2. Keep each feature in its own small branch.
+3. **Never hand-resolve generated files** (`*.g.dart`, `*.freezed.dart`, `translations.g.dart`). Resolve the sources (`.drift`, models, `lib/i18n/json/*.json`) and regenerate:
+   ```bash
+   dart run build_runner build --delete-conflicting-outputs
+   dart run slang
+   ```
+4. **Database schema**: if we change tables while upstream bumps the schema version, the versions and `assets/sql/migrations/vN.sql` will clash. Check both sides before merging and ask the maintainer how to number the migration.
+
+### Verify after every sync
+
+```bash
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+flutter analyze && flutter test
+```
+
+### Contributing a feature back to upstream
+
+Create a clean branch from the latest `upstream/develop`, add only that feature, and open the PR against upstream's `develop`:
+
+```bash
+git checkout -b feature/xxx upstream/develop
+git cherry-pick <our feature commits>
+```
