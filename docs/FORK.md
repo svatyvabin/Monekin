@@ -8,7 +8,7 @@
 
 | 日期 | 类型（feat/fix/change/schema） | 摘要 | 文件 / 模块 | 分支 / 提交 |
 | --- | --- | --- | --- | --- |
-| 2026-11-09 | feat | 默认隐藏收入：收入金额默认模糊，点一下任意被模糊的数字即可在本次会话显示全部收入；应用切到后台或重启后恢复遮挡。遮挡范围：首页/账户详情的收入卡片、交易页汇总的收入与余额、交易列表和详情里的收入交易金额、统计页的现金流（余额、收入、占比条）与按周期图表、分类图的「收入」标签。支出不受影响 | `lib/core/services/income_privacy_service.dart`、`lib/core/presentation/widgets/income_mask.dart`、`test/income_mask_test.dart`，以及下方「修改过的上游文件」 | `my/feature-hide-income` |
+| 2026-11-09 | feat | 默认隐藏收入：收入金额默认模糊，点一下任意被模糊的数字即可在本次会话显示全部收入；应用切到后台或重启后恢复遮挡。遮挡范围：首页/账户详情的收入卡片、交易页汇总的收入与余额、交易列表和详情里的收入交易金额、统计页的现金流（余额、收入、占比条）与按周期图表、分类图的「收入」标签。支出不受影响 | `lib/core/services/income_privacy_service.dart`、`lib/core/presentation/widgets/income_mask.dart`、`test/income_mask_test.dart`，以及下方「修改过的上游文件」 | `my/feature-hide-income`（`0e05b8bb`，合并提交 `b8903a5a`） |
 | 2026-11-09 | change | 本地签名：release 密钥副本放入 `android/keys/`（已被 git 忽略），配置 `key.properties`，本地 release 包与 Actions 产物签名一致，可覆盖安装 | `android/keys/`（不入库）、`docs/FORK_DEV_GUIDE.md` | `my/feature-ui-tweaks` |
 | 2026-11-09 | change | 文档：`CLAUDE.md` 增加「环境目录」，说明默认使用 `../android-env/` | `CLAUDE.md` | `my/feature-ui-tweaks` |
 | 2026-11-09 | fix | 交易表单：金额框跳到标题框时先取消焦点、下一帧再聚焦，让输入法重新读取标题框的文字键盘类型（此前仍显示数字键盘） | `lib/app/transactions/form/widgets/transaction_form_amount_block.dart` | `my/feature-ui-tweaks` |
@@ -68,5 +68,4 @@
 
 - `test/dashboard_refresh_test.dart` 依赖已删除的总余额卡片（`EvolutionCard`、`DashboardBalanceChart`），目前失败，需要改写或跳过。
 - 构建 APK 的工作流目前靠推送 `custom` 触发；要从 Actions 页面手动运行，工作流文件还得放到默认分支 `main` 上，见 `FORK_DEV_GUIDE.md` 第 11 节。
-- `custom` 还没有包含 `my/feature-ui-tweaks` 的提交，Actions 产物目前仍是旧功能和官方包名 `com.monekin.app`。
 - `zh-TW.json` 尚未做同样的润色；`zh-Hant-HK` 这类繁体区域目前会被匹配到简体。
