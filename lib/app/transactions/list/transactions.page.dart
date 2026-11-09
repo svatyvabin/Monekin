@@ -8,6 +8,7 @@ import 'package:monekin/app/layout/page_context.dart';
 import 'package:monekin/app/layout/page_framework.dart';
 import 'package:monekin/app/settings/pages/backup/export_page.dart';
 import 'package:monekin/app/transactions/list/widgets/bulk_edit_transaction_modal.dart';
+import 'package:monekin/app/transactions/list/widgets/month_switcher.dart';
 import 'package:monekin/app/transactions/list/widgets/transaction_list.dart';
 import 'package:monekin/app/transactions/list/widgets/transaction_list_tile.dart';
 import 'package:monekin/core/database/services/transaction/transaction_service.dart';
@@ -41,6 +42,25 @@ class TransactionsPage extends StatefulWidget {
 
 class TransactionsPageState extends State<TransactionsPage> {
   late TransactionFilterSet filters;
+
+  // FORK: the list is browsed month by month unless the user sets a date filter
+  DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
+
+  bool get _hasDateFilter => filters.minDate != null || filters.maxDate != null;
+
+  // An explicit date filter or an active text search takes over the month.
+  bool get _monthMode => !_hasDateFilter && searchController.text.isEmpty;
+
+  TransactionFilterSet get _effectiveFilters {
+    final f = filters.copyWith(searchValue: searchController.text);
+
+    if (!_monthMode) return f;
+
+    return f.copyWith(
+      minDate: _month,
+      maxDate: DateTime(_month.year, _month.month + 1),
+    );
+  }
 
   bool searchActive = false;
 
@@ -170,6 +190,14 @@ class TransactionsPageState extends State<TransactionsPage> {
             },
           ),
         ),
+        if (_monthMode)
+          MonthSwitcher(
+            month: _month,
+            onChanged: (month) {
+              setState(() => _month = DateTime(month.year, month.month));
+              resetScroll();
+            },
+          ),
         LayoutBuilder(
           builder: (context, constraints) {
             // A bulk selection turns the summary bar into the selection
@@ -224,7 +252,7 @@ class TransactionsPageState extends State<TransactionsPage> {
                 applySwipeActions: !isWideLayout,
               );
             },
-            filters: filters.copyWith(searchValue: searchController.text),
+            filters: _effectiveFilters,
             onEmptyList: _buildEmptyState(t, context),
           ),
         ),
@@ -411,22 +439,25 @@ class TransactionsPageState extends State<TransactionsPage> {
     );
   }
 
-  /// The default summary bar: a "showing N movements" column on the left and
-  /// the filter balance on the right.
+  /// The default summary bar: income, expense and balance of the shown month.
   Widget _buildCompactSummary(Translations t, BuildContext context) {
-    final f = filters.copyWith(searchValue: searchController.text);
+    final f = _effectiveFilters;
 
     return StreamBuilder(
-      stream: Rx.combineLatest2(
-        TransactionService.instance.countTransactions(filters: f),
+      stream: Rx.combineLatest3(
+        TransactionService.instance.getTransactionsValueBalance(
+          filters: f.copyWith(transactionTypes: [TransactionType.income]),
+        ),
+        TransactionService.instance.getTransactionsValueBalance(
+          filters: f.copyWith(transactionTypes: [TransactionType.expense]),
+        ),
         TransactionService.instance.getTransactionsValueBalance(filters: f),
-        (int a, double b) => (count: a, value: b),
+        (double income, double expense, double balance) =>
+            (income: income, expense: expense, balance: balance),
       ),
       builder: (context, snapshot) {
         final data = snapshot.data;
-        final theme = Theme.of(context);
-        final count = data?.count ?? 0;
-        final balance = data?.value ?? 0;
+        final balance = data?.balance ?? 0;
 
         return _summaryCardShell(
           loading: data == null,
@@ -437,12 +468,27 @@ class TransactionsPageState extends State<TransactionsPage> {
             children: [
               _summaryColumn(
                 context,
-                label: t.transaction.display(n: count),
-                value: Text(
-                  count.toStringAsFixed(0),
-                  style: theme.textTheme.titleLarge!.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                label: TransactionType.income.displayName(
+                  context,
+                  plural: true,
+                ),
+                value: _summaryAmount(
+                  context,
+                  amount: data?.income ?? 0,
+                  color: TransactionType.income.color(context),
+                ),
+              ),
+              _summaryColumn(
+                context,
+                alignment: CrossAxisAlignment.center,
+                label: TransactionType.expense.displayName(
+                  context,
+                  plural: true,
+                ),
+                value: _summaryAmount(
+                  context,
+                  amount: data?.expense ?? 0,
+                  color: TransactionType.expense.color(context),
                 ),
               ),
               _summaryColumn(
@@ -471,7 +517,7 @@ class TransactionsPageState extends State<TransactionsPage> {
   /// desktop it also carries the bulk actions and keeps the page app bar put;
   /// on mobile the actions stay in the selection app bar.
   Widget _buildSelectionSummary(Translations t, BuildContext context) {
-    final f = filters.copyWith(searchValue: searchController.text);
+    final f = _effectiveFilters;
     final isMobile = AppUtils.isMobileLayout(context);
     final selCount = selectedTransactions.length;
     final selSum = selectedTransactions
@@ -573,7 +619,7 @@ class TransactionsPageState extends State<TransactionsPage> {
   }
 
   Widget _buildBreakdownSummary(Translations t, BuildContext context) {
-    final f = filters.copyWith(searchValue: searchController.text);
+    final f = _effectiveFilters;
 
     return StreamBuilder(
       stream: Rx.combineLatest4(
