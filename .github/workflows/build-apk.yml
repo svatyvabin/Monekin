@@ -59,7 +59,7 @@ jobs:
               -alias "$KEY_ALIAS" -keyalg RSA -keysize 2048 \
               -validity 10000 -dname "CN=Monekin CI"
           fi
-          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=ci.jks\n' \
+          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=../keys/ci.jks\n' \
             "$STORE_PASSWORD" "$KEY_PASSWORD" "$KEY_ALIAS" > android/keys/key.properties
 
       - name: Build APK
