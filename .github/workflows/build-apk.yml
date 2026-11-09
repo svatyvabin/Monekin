@@ -4,9 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - claude/relaxed-fermat-kzr28j
-    paths:
-      - .github/workflows/build-apk.yml
+      - custom
 
 permissions:
   contents: read
@@ -64,7 +62,9 @@ jobs:
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > android/keys/ci.jks
+            echo "::notice title=Signing::Using the keystore from the repository secrets"
           else
+            echo "::warning title=Signing::ANDROID_KEYSTORE_BASE64 is not set, signing with a throwaway key"
             STORE_PASSWORD=android
             KEY_PASSWORD=android
             KEY_ALIAS=ci
@@ -78,6 +78,16 @@ jobs:
 
       - name: Build APK
         run: flutter build apk --release
+
+      # Prints the signing certificate so builds can be compared with a local
+      # release build. The same keystore always gives the same SHA-256.
+      - name: Verify APK signature
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-release.apk | tee cert.txt
+          SHA=$(grep "certificate SHA-256" cert.txt | head -1 | awk '{print $NF}')
+          echo "::notice title=APK signing certificate SHA-256::$SHA"
+          echo "APK signing certificate SHA-256: \`$SHA\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
