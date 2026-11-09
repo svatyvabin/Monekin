@@ -184,7 +184,15 @@ class TransactionFormAmountBlock extends StatelessWidget {
                     controller: ctrl,
                     focusNode: c.amountFocusNode,
                     textInputAction: TextInputAction.next,
-                    onSubmitted: (_) => c.titleFocusNode.requestFocus(),
+                    // FORK: move focus once, straight to the title field. Drop
+                    // the focus first so the IME re-reads the title's text
+                    // keyboard type instead of keeping the numeric one.
+                    onEditingComplete: () {
+                      FocusManager.instance.primaryFocus?.unfocus();
+                      WidgetsBinding.instance.addPostFrameCallback(
+                        (_) => c.titleFocusNode.requestFocus(),
+                      );
+                    },
                     textAlign: TextAlign.center,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,

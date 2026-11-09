@@ -8,7 +8,6 @@ import 'package:monekin/core/models/account/account.dart';
 import 'package:monekin/core/models/date-utils/date_period_state.dart';
 import 'package:monekin/core/presentation/widgets/card_with_header.dart';
 import 'package:monekin/core/presentation/widgets/no_results.dart';
-import 'package:monekin/core/presentation/widgets/number_ui_formatters/currency_displayer.dart';
 import 'package:monekin/core/presentation/widgets/trending_value.dart';
 import 'package:monekin/core/routes/route_utils.dart';
 import 'package:monekin/i18n/generated/translations.g.dart';
@@ -136,22 +135,7 @@ class _AccountRow extends StatelessWidget {
       trailing: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          StreamBuilder(
-            initialData: 0.0,
-            stream: AccountService.instance.getAccountMoney(account: account),
-            builder: (context, snapshot) {
-              final amount = snapshot.data ?? 0.0;
-
-              return CurrencyDisplayer(
-                amountToConvert: amount,
-                currency: account.currency,
-                compactView: amount >= 10000000,
-                integerStyle: Theme.of(
-                  context,
-                ).textTheme.titleSmall!.copyWith(fontWeight: FontWeight.bold),
-              );
-            },
-          ),
+          // FORK: the account balance is not shown on the dashboard
           StreamBuilder(
             initialData: 0.0,
             stream: AccountService.instance.getAccountsBalanceRelativeChange(
@@ -240,25 +224,7 @@ class _AccountGroupRowState extends State<_AccountGroupRow> {
       trailing: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          StreamBuilder(
-            initialData: 0.0,
-            stream: AccountService.instance.getAccountsMoney(
-              accountIds: widget.accounts.map((a) => a.id),
-              convertToPreferredCurrency: sharedCurrency == null,
-            ),
-            builder: (context, snapshot) {
-              final amount = snapshot.data ?? 0.0;
-
-              return CurrencyDisplayer(
-                amountToConvert: amount,
-                currency: sharedCurrency,
-                compactView: amount >= 10000000,
-                integerStyle: Theme.of(
-                  context,
-                ).textTheme.titleSmall!.copyWith(fontWeight: FontWeight.bold),
-              );
-            },
-          ),
+          // FORK: the group total is not shown on the dashboard
           StreamBuilder(
             initialData: 0.0,
             stream: AccountService.instance.getAccountsBalanceRelativeChange(

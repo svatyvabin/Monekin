@@ -30,6 +30,19 @@ Future<Category?> showCategoryPickerModal(
   );
 }
 
+/// Places [newVisibleOrder] (a reordered subset of [allIds]) back into the
+/// slots the subset occupied in [allIds], leaving the other ids where they are.
+// FORK: used to persist drag-and-drop ordering of a filtered category list
+List<String> reorderSubset(List<String> allIds, List<String> newVisibleOrder) {
+  final visible = newVisibleOrder.toSet();
+  final queue = newVisibleOrder.iterator;
+
+  return [
+    for (final id in allIds)
+      if (visible.contains(id) && queue.moveNext()) queue.current else id,
+  ];
+}
+
 class CategoryPicker extends StatefulWidget {
   CategoryPicker({
     super.key,
@@ -61,6 +74,42 @@ class _CategoryPickerState extends State<CategoryPicker>
   /// subcategory stream can decide whether to auto-close (leaf) or stay open to
   /// let the user refine.
   bool _awaitingSubcatCheck = false;
+
+  /// Ids in the order set by the last drag, until the DB stream catches up.
+  List<String>? _localOrder;
+
+  Future<void> _moveCategory(
+    List<Category> visible,
+    Category dragged,
+    Category target,
+  ) async {
+    final ids = visible.map((c) => c.id).toList();
+    final to = ids.indexOf(target.id);
+
+    ids
+      ..remove(dragged.id)
+      ..insert(to, dragged.id);
+
+    setState(() => _localOrder = ids);
+    await HapticFeedback.selectionClick();
+
+    final all = await CategoryService.instance
+        .getCategories(predicate: (c, p) => c.parentCategoryID.isNull())
+        .first;
+
+    final newOrder = reorderSubset(all.map((c) => c.id).toList(), ids);
+    final byId = {for (final c in all) c.id: c};
+
+    await Future.wait([
+      for (final (index, id) in newOrder.indexed)
+        if (byId[id]!.displayOrder != index)
+          CategoryService.instance.updateCategory(
+            byId[id]!.copyWith(displayOrder: index),
+          ),
+    ]);
+
+    if (mounted) setState(() => _localOrder = null);
+  }
 
   @override
   void initState() {
@@ -308,6 +357,23 @@ class _CategoryPickerState extends State<CategoryPicker>
       return const LinearProgressIndicator();
     }
 
+    var categories = snapshot.data!;
+
+    if (_localOrder != null) {
+      final order = _localOrder!;
+      categories = [...categories]
+        ..sort((a, b) {
+          final ia = order.indexOf(a.id);
+          final ib = order.indexOf(b.id);
+          return (ia < 0 ? order.length : ia).compareTo(
+            ib < 0 ? order.length : ib,
+          );
+        });
+    }
+
+    // Reordering is disabled while searching, as the list is partial
+    final canReorder = categories.length > 1 && searchContoller.text.isEmpty;
+
     return Align(
       alignment: Alignment.center,
       heightFactor: 1,
@@ -315,8 +381,8 @@ class _CategoryPickerState extends State<CategoryPicker>
         runAlignment: WrapAlignment.center,
         runSpacing: 20, // Vertical space
         spacing: 16, // Horizontal space
-        children: snapshot.data!.map((category) {
-          return CategoryButtonSelector(
+        children: categories.map((category) {
+          final item = CategoryButtonSelector(
             label: category.name,
             maxTextSize: 48 * 1.25,
             iconWidget: IconDisplayer.fromCategory(
@@ -349,6 +415,29 @@ class _CategoryPickerState extends State<CategoryPicker>
 
                 rebuild();
               },
+            ),
+          );
+
+          // FORK: long press and drag onto another category to reorder
+          return DragTarget<Category>(
+            onWillAcceptWithDetails: (details) =>
+                canReorder && details.data.id != category.id,
+            onAcceptWithDetails: (details) =>
+                _moveCategory(categories, details.data, category),
+            builder: (context, candidates, _) => AnimatedScale(
+              scale: candidates.isNotEmpty ? 1.15 : 1,
+              duration: const Duration(milliseconds: 120),
+              child: LongPressDraggable<Category>(
+                data: category,
+                maxSimultaneousDrags: canReorder ? 1 : 0,
+                onDragStarted: HapticFeedback.mediumImpact,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: Transform.scale(scale: 1.15, child: item),
+                ),
+                childWhenDragging: Opacity(opacity: 0.3, child: item),
+                child: item,
+              ),
             ),
           );
         }).toList(),

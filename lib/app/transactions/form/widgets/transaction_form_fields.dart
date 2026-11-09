@@ -30,6 +30,7 @@ class TransactionTitleField extends StatelessWidget {
           title: TextFormField(
             controller: controller,
             focusNode: focusNode,
+            keyboardType: TextInputType.text, // FORK
             textInputAction: textInputAction ?? TextInputAction.next,
             onFieldSubmitted: onFieldSubmitted,
             maxLength: maxLabelLenghtForDisplayNames,
