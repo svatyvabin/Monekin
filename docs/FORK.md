@@ -8,6 +8,7 @@
 
 | 日期 | 类型（feat/fix/change/schema） | 摘要 | 文件 / 模块 | 分支 / 提交 |
 | --- | --- | --- | --- | --- |
+| 2026-11-09 | change | Android 包名改为 `com.weibin.monekin`（只改 `applicationId`），可与官方应用共存；这是另一个应用，数据不共享，首次安装需用「恢复备份」导入 | `android/app/build.gradle` | `my/feature-ui-tweaks` |
 | 2026-11-09 | change | 文档：`FORK.md`、`FORK_DEV_GUIDE.md` 改为中文，并补充中文翻译规范、本地 Android 测试和 CI 说明；新增项目根目录 `CLAUDE.md`，默认使用中文并关联相关文档 | `CLAUDE.md`、`docs/FORK.md`、`docs/FORK_DEV_GUIDE.md` | `my/feature-ui-tweaks` |
 | 2026-11-09 | change | CI：合并 `claude/relaxed-fermat-kzr28j`，新增构建 release APK 的 GitHub Actions 工作流（手动触发；配置 secret 时用正式密钥签名，否则用一次性密钥） | `.github/workflows/build-apk.yml` | `custom`（合并提交 `3484cd0b`） |
 | 2026-11-09 | change | 简体中文（`zh-CN`）润色：用词地道，「您」改「你」，统一术语（分类/筛选/支出/周期交易/持仓），修正误译（如「风俗」「手术」「文件夹」），翻译遗留的英文，补齐 25 条缺失词条，修复使用条款链接 | `lib/i18n/json/zh-CN.json` | `my/feature-ui-tweaks` |
@@ -28,6 +29,7 @@
 
 | 文件 | 改动 | 标记 |
 | --- | --- | --- |
+| `android/app/build.gradle` | `applicationId` 改为 `com.weibin.monekin` | `// FORK:` |
 | `lib/app/home/widgets/dashboard_account_list.dart` | 账户行去掉余额和分组合计 | `// FORK:` |
 | `lib/app/home/dashboard.page.dart` | 去掉余额大卡片、吸顶栏和用户信息（`_buildWelcome`） | `// FORK:` |
 | `lib/app/transactions/list/transactions.page.dart` | 月份模式（`_effectiveFilters`） | `// FORK:` |
@@ -44,6 +46,7 @@
 
 ## 与上游的行为差异
 
+- 安装包名是 `com.weibin.monekin`，与官方的 `com.monekin.app` 不同，两者可以并存。
 - 首页没有总余额卡片，「我的账户」里不显示余额，也没有左上角的用户信息。
 - 交易页默认按月浏览；设置了日期筛选或正在搜索时，月份切换器不可用。
 - 简体中文使用「你」称呼，术语与上游不同（见 `FORK_DEV_GUIDE.md` 的中文翻译规范）。

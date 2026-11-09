@@ -87,7 +87,8 @@ git checkout custom && git merge develop
 
 ## 6. 应用标识（与官方应用共存）
 
-- 修改 Android 的 `applicationId`、应用名称和图标。
+- Android 的 `applicationId` 已改为 `com.weibin.monekin`（只改 `applicationId`；`namespace` 和 Kotlin 的 `package` 是代码内部的包名，保持 `com.monekin.app` 不变）。应用名称和图标目前还和官方一致。
+- 包名不同意味着这是另一个应用：数据互不共享，首次安装是全新状态，需要用「设置 → 数据 → 恢复备份」导入数据。
 - 在 `pubspec.yaml` 的版本号后加后缀，例如 `10.2.0+fork.1`。
 - 不发起网络请求，不加遥测，不加广告。
 
@@ -159,8 +160,8 @@ emulator -avd monekin_api35 -no-window -no-audio -no-boot-anim \
 ### 10.4 验证中文界面
 
 ```bash
-adb shell pm clear com.monekin.app
-adb shell cmd locale set-app-locales com.monekin.app --locales zh-CN
+adb shell pm clear com.weibin.monekin
+adb shell cmd locale set-app-locales com.weibin.monekin --locales zh-CN
 ```
 
 清空数据后启动，应用会直接显示中文，用来验证「首次安装跟随系统语言」。
@@ -176,4 +177,5 @@ adb shell cmd locale set-app-locales com.monekin.app --locales zh-CN
 
 - 触发方式：手动触发（`workflow_dispatch`），或向 `claude/relaxed-fermat-kzr28j` 分支推送并且改动了这个工作流文件。
 - 签名：配置了 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD` 这四个 secret 时用它们签名；没配置时用一次性密钥签名，APK 可以安装，但每次的签名都不同，不能用来覆盖升级。
+- 本机的签名密钥在 `~/.android-keys/monekin/`（`monekin-release.jks`、`ANDROID_KEYSTORE_BASE64.txt`、`secrets.txt`，权限 600），不在仓库里，也不要提交（`.gitignore` 已忽略 `*.jks`）。别名 `monekin`，证书 SHA-256 指纹 `67b86a5e…519a`（完整值：`67:b8:6a:5e:b4:68:18:e6:28:ec:51:24:9e:2f:f3:d6:41:d1:bb:5a:b1:79:41:bb:ef:26:02:c9:52:8e:51:9a`）。**这把密钥和密码一旦丢失，已安装的应用就无法再覆盖升级**，请另外备份到安全的地方。
 - 已知限制：GitHub 要求 `workflow_dispatch` 的工作流文件必须存在于**默认分支**上才能手动触发，而本 fork 的默认分支是 `main`（上游镜像，不在上面开发）。所以目前在 `custom` 上这个工作流还不能从 Actions 页面手动运行。需要在「把它放到 `main`」和「把 push 触发改到 `custom`」之间选择一种。
