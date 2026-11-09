@@ -1,23 +1,17 @@
-import 'dart:math';
-
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:monekin/app/home/widgets/dashboard_account_list.dart';
-import 'package:monekin/app/home/widgets/dashboard_balance_chart.dart';
 import 'package:monekin/app/home/widgets/finance_health_donut.dart';
 import 'package:monekin/app/home/widgets/new_transaction_fl_button.dart';
 import 'package:monekin/app/layout/page_context.dart';
 import 'package:monekin/app/layout/page_framework.dart';
-import 'package:monekin/app/settings/widgets/edit_profile_modal.dart';
 import 'package:monekin/app/stats/stats_page.dart';
 import 'package:monekin/app/stats/widgets/movements_distribution/pie_chart_by_categories.dart';
-import 'package:monekin/core/database/services/account/account_service.dart';
 import 'package:monekin/core/database/services/user-setting/private_mode_service.dart';
 import 'package:monekin/core/models/date-utils/date_period.dart';
 import 'package:monekin/core/models/date-utils/date_period_state.dart';
 import 'package:monekin/core/models/transaction/transaction_type.enum.dart';
-import 'package:monekin/core/presentation/app_colors.dart';
 import 'package:monekin/core/presentation/debug_page.dart';
 import 'package:monekin/core/presentation/helpers/snackbar.dart';
 import 'package:monekin/core/presentation/responsive/breakpoints.dart';
@@ -25,18 +19,12 @@ import 'package:monekin/core/presentation/responsive/page_content.dart';
 import 'package:monekin/core/presentation/widgets/card_with_header.dart';
 import 'package:monekin/core/presentation/widgets/dates/date_period_modal.dart';
 import 'package:monekin/core/presentation/widgets/dates/date_range_chips.dart';
-import 'package:monekin/core/presentation/widgets/evolution_charts/evolution_card.dart';
 import 'package:monekin/core/presentation/widgets/income_expense_flow_card.dart';
-import 'package:monekin/core/presentation/widgets/number_ui_formatters/currency_displayer.dart';
 import 'package:monekin/core/presentation/widgets/page_refresh.dart';
 import 'package:monekin/core/presentation/widgets/tappable.dart';
-import 'package:monekin/core/presentation/widgets/user_avatar.dart';
-import 'package:monekin/core/presentation/widgets/user_profile_builder.dart';
 import 'package:monekin/core/routes/route_utils.dart';
 import 'package:monekin/core/utils/app_utils.dart';
 import 'package:monekin/i18n/generated/translations.g.dart';
-import 'package:rxdart/rxdart.dart';
-import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../core/database/services/app-data/app_data_service.dart';
 
@@ -47,34 +35,24 @@ class DashboardPage extends StatefulWidget {
   DashboardPageState createState() => DashboardPageState();
 }
 
-typedef _BalanceStats = ({double delta, double percentage});
-
 class DashboardPageState extends State<DashboardPage> {
   final _refreshKey = GlobalKey<PageRefreshState>();
   DatePeriodState dateRangeService = const DatePeriodState(
     datePeriod: defaultDatePeriod,
   );
   final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<bool> _showStickyBalanceHeader = ValueNotifier(false);
-  late final String _welcomeGreeting = _pickWelcomeGreeting();
-  late Stream<double> _currentBalanceStream;
-  late Stream<(double, _BalanceStats)> _balanceSummaryStream;
   int _refreshVersion = 0;
 
   @override
   void initState() {
     super.initState();
 
-    _refreshCurrentBalanceStream();
-    _scrollController.addListener(_updateStickyBalanceHeader);
     _loadSavedDatePeriod();
   }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_updateStickyBalanceHeader);
     _scrollController.dispose();
-    _showStickyBalanceHeader.dispose();
     super.dispose();
   }
 
@@ -87,7 +65,6 @@ class DashboardPageState extends State<DashboardPage> {
         if (!mounted) return;
         setState(() {
           dateRangeService = dateRangeService.copyWith(datePeriod: period);
-          _refreshBalanceSummaryStream();
         });
       } catch (_) {
         // Fall back to default
@@ -95,53 +72,8 @@ class DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  Stream<_BalanceStats> _getBalanceStatsStream(DatePeriodState dateRange) {
-    final start = dateRange.startDate;
-    final end = dateRange.endDate;
-
-    if (start == null || end == null) {
-      return Stream.value((delta: 0, percentage: 0));
-    }
-
-    return Rx.combineLatest2(
-      AccountService.instance.getAccountsMoney(date: start),
-      AccountService.instance.getAccountsMoney(date: end),
-      (double startBalance, double endBalance) {
-        final delta = endBalance - startBalance;
-
-        const eps = 1e-10;
-        final percentage = startBalance.abs() < eps
-            ? (endBalance.abs() < eps ? 0.0 : double.nan)
-            : delta / startBalance.abs();
-
-        return (delta: delta, percentage: percentage);
-      },
-    );
-  }
-
-  void _refreshBalanceSummaryStream() {
-    _balanceSummaryStream = Rx.combineLatest2(
-      _currentBalanceStream,
-      _getBalanceStatsStream(dateRangeService),
-      (double current, _BalanceStats stats) => (current, stats),
-    ).distinct().shareReplay(maxSize: 1);
-  }
-
-  void _refreshCurrentBalanceStream() {
-    _currentBalanceStream = AccountService.instance
-        .getAccountsMoney()
-        .distinct()
-        .shareReplay(maxSize: 1);
-    _refreshBalanceSummaryStream();
-  }
-
   Future<void> _refreshDashboard() async {
-    setState(() {
-      _refreshCurrentBalanceStream();
-      _refreshVersion++;
-    });
-
-    await _balanceSummaryStream.first;
+    setState(() => _refreshVersion++);
   }
 
   void requestRefreshFocus() => _refreshKey.currentState?.requestFocus();
@@ -157,17 +89,7 @@ class DashboardPageState extends State<DashboardPage> {
         periodModifier: 0,
         datePeriod: period,
       );
-      _refreshBalanceSummaryStream();
     });
-  }
-
-  void _updateStickyBalanceHeader() {
-    if (!_scrollController.hasClients) return;
-
-    final show = _scrollController.offset > 180;
-    if (show != _showStickyBalanceHeader.value) {
-      _showStickyBalanceHeader.value = show;
-    }
   }
 
   Future<void> _openDatePeriodSelector() async {
@@ -220,113 +142,17 @@ class DashboardPageState extends State<DashboardPage> {
         child: PageRefresh(
           key: _refreshKey,
           onRefresh: _refreshDashboard,
-          builder: (context, refreshButton) => Stack(
-            children: [
-              SingleChildScrollView(
-                controller: _scrollController,
-                physics: AppUtils.hasPointerInput
-                    ? null
-                    : AlwaysScrollableScrollPhysics(
-                        parent: ScrollConfiguration.of(
-                          context,
-                        ).getScrollPhysics(context),
-                      ),
-                padding: const EdgeInsets.only(bottom: 32),
-                child: PageContent(
-                  child: _buildContent(context, refreshButton),
-                ),
-              ),
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: ValueListenableBuilder<bool>(
-                  valueListenable: _showStickyBalanceHeader,
-                  child: _buildStickyBalanceHeader(context),
-                  builder: (context, showHeader, child) => IgnorePointer(
-                    ignoring: !showHeader,
-                    child: AnimatedSlide(
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOutCubic,
-                      offset: showHeader ? Offset.zero : const Offset(0, -1),
-                      child: AnimatedOpacity(
-                        duration: const Duration(milliseconds: 120),
-                        opacity: showHeader ? 1 : 0,
-                        child: child,
-                      ),
-                    ),
+          builder: (context, refreshButton) => SingleChildScrollView(
+            controller: _scrollController,
+            physics: AppUtils.hasPointerInput
+                ? null
+                : AlwaysScrollableScrollPhysics(
+                    parent: ScrollConfiguration.of(context)
+                        .getScrollPhysics(context),
                   ),
-                ),
-              ),
-            ],
+            padding: const EdgeInsets.only(bottom: 32),
+            child: PageContent(child: _buildContent(context, refreshButton)),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStickyBalanceHeader(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Material(
-      color: theme.colorScheme.surface,
-      elevation: 3,
-      shadowColor: theme.colorScheme.shadow.withValues(alpha: 0.16),
-      shape: Border(
-        bottom: BorderSide(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          spacing: 16,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    t.home.total_balance,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: AppColors.of(context).textHint,
-                    ),
-                  ),
-                  StreamBuilder<double>(
-                    stream: _currentBalanceStream,
-                    builder: (context, snapshot) => Skeletonizer(
-                      enabled: !snapshot.hasData,
-                      child: CurrencyDisplayer(
-                        amountToConvert: snapshot.data ?? 9999,
-                        integerStyle: theme.textTheme.titleLarge!.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Flexible(
-              child: FilledButton.icon(
-                onPressed: _openDatePeriodSelector,
-                icon: const Icon(Icons.calendar_month_rounded, size: 18),
-                label: Text(
-                  dateRangeService.getText(context),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 40),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -364,7 +190,8 @@ class DashboardPageState extends State<DashboardPage> {
     final healthCard = FinanceHealthCard(dateRangeService: dateRangeService);
     final categoriesCard = _buildCategoriesCard(context);
 
-    final balanceHero = _buildBalanceHero(context);
+    // FORK: the total balance hero was removed; only the period picker remains.
+    final periodSelector = _buildPeriodSelector(context);
 
     const gutter = EdgeInsets.symmetric(horizontal: 16);
 
@@ -376,15 +203,10 @@ class DashboardPageState extends State<DashboardPage> {
           child: _buildHeader(context, refreshButton),
         ),
         const SizedBox(height: 20),
-        // On mobile the chart runs full-bleed (its label/chips keep their inset
-        // via EvolutionCard.contentInset); once decorated it sits in a card and
-        // is padded to stay aligned with the rest of the content.
-        if (isWide)
-          Padding(padding: gutter, child: balanceHero)
-        else
-          balanceHero,
+        Padding(padding: gutter, child: periodSelector),
         const SizedBox(height: 16),
         Padding(
+          key: ValueKey(_refreshVersion),
           padding: gutter,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -456,85 +278,15 @@ class DashboardPageState extends State<DashboardPage> {
 
   // ------------------------- Header -------------------------
 
-  String _pickWelcomeGreeting() {
-    final timeOfDayGreeting = switch (DateTime.now().hour) {
-      >= 6 && < 12 => t.home.welcome_back_morning,
-      >= 12 && < 19 => t.home.welcome_back_afternoon,
-      >= 19 && < 23 => t.home.welcome_back_evening,
-      _ => t.home.welcome_back_night,
-    };
-
-    final greetings = [
-      timeOfDayGreeting,
-      t.home.welcome_back_1,
-      t.home.welcome_back_2,
-      t.home.welcome_back_3,
-      t.home.welcome_back_4,
-      t.home.welcome_back_5,
-      t.home.welcome_back_6,
-    ];
-
-    return greetings[Random().nextInt(greetings.length)];
-  }
-
   Widget _buildHeader(BuildContext context, Widget? refreshButton) {
     return Row(
       children: [
-        Expanded(child: _buildWelcome(context)),
+        // FORK: the user info (avatar, greeting, name) is not shown
+        const Spacer(),
         ?refreshButton,
         if (refreshButton != null) const SizedBox(width: 8),
         _buildPrivateModeButton(context),
       ],
-    );
-  }
-
-  Widget _buildWelcome(BuildContext context) {
-    return Tappable(
-      bgColor: Colors.transparent,
-      borderRadius: BorderRadius.circular(14),
-      onTap: () {
-        RouteUtils.showResponsiveSheet(
-          context: context,
-          builder: (context) => const EditProfileModal(),
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-        child: UserProfileBuilder(
-          builder: (context, userName, avatar) => Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              UserAvatar(avatar: avatar),
-              const SizedBox(width: 12),
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _welcomeGreeting,
-                      softWrap: false,
-                      style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                        color: AppColors.of(context).textHint,
-                        overflow: TextOverflow.fade,
-                      ),
-                    ),
-                    Text(
-                      userName ?? 'User',
-                      softWrap: false,
-                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        overflow: TextOverflow.fade,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -562,32 +314,22 @@ class DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ---------------------- Balance hero ----------------------
-
-  Widget _buildBalanceHero(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
-
-    return StreamBuilder(
-      stream: _balanceSummaryStream,
-      builder: (context, snapshot) {
-        final current = snapshot.data?.$1 ?? 0;
-        final stats = snapshot.data?.$2;
-
-        return EvolutionCard(
-          valueLabel: t.home.total_balance,
-          finalValue: current,
-          changeValue: snapshot.hasData ? stats?.delta : null,
-          changePercentage: snapshot.hasData ? stats?.percentage : null,
-          loading: !snapshot.hasData,
-          chart: DashboardBalanceChart(
-            key: ValueKey(_refreshVersion),
-            dateRange: dateRangeService,
-            lineColor: accent,
-          ),
-          currentPeriod: dateRangeService.datePeriod,
-          onPresetSelected: _onPeriodChanged,
-        );
-      },
+  Widget _buildPeriodSelector(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: FilledButton.icon(
+        onPressed: _openDatePeriodSelector,
+        icon: const Icon(Icons.calendar_month_rounded, size: 18),
+        label: Text(
+          dateRangeService.getText(context),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(0, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+        ),
+      ),
     );
   }
 
