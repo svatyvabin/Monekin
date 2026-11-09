@@ -284,6 +284,19 @@ Everything posted to GitHub must read as if a project developer wrote it for any
 
 ---
 
+## Fork Rules
+
+This repo is a personal fork; full rules in `docs/FORK_DEV_GUIDE.md`, ledger in `docs/FORK.md`. These override the upstream rules above where they conflict.
+
+- Develop on `custom` (via `my/feature-xxx`), never on `main`/`develop` (upstream mirrors).
+- Prefer new files; edit upstream files minimally and mark with `// FORK: <reason>`.
+- Format only changed files; never `dart format .` repo-wide.
+- Custom DB data goes in new `x_`-prefixed tables; don't alter upstream tables. A migration may be written when the task requires it; record it in `docs/FORK.md`.
+- Custom i18n keys live under `fork.*`.
+- Update `docs/FORK.md` when adding features, touching upstream files, or adding tables.
+
+---
+
 ## Plan Mode
 
 - Make plans extremely concise. Sacrifice grammar for brevity.
