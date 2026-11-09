@@ -11,6 +11,7 @@ import 'package:monekin/core/models/date-utils/periodicity.dart';
 import 'package:monekin/core/models/supported-icon/icon_displayer.dart';
 import 'package:monekin/core/models/transaction/next_pay_status.enum.dart';
 import 'package:monekin/core/models/transaction/transaction.dart';
+import 'package:monekin/core/models/transaction/transaction_type.enum.dart';
 import 'package:monekin/core/models/transaction/transaction_status.enum.dart';
 import 'package:monekin/core/presentation/animations/animated_expanded.dart';
 import 'package:monekin/core/presentation/helpers/snackbar.dart';
@@ -19,6 +20,7 @@ import 'package:monekin/core/presentation/widgets/number_ui_formatters/currency_
 import 'package:monekin/core/presentation/widgets/number_ui_formatters/ui_number_formatter.dart';
 import 'package:monekin/core/routes/route_utils.dart';
 import 'package:monekin/core/services/view-actions/transaction_view_actions_service.dart';
+import 'package:monekin/core/presentation/widgets/income_mask.dart';
 import 'package:monekin/core/utils/constants.dart';
 import 'package:monekin/i18n/generated/translations.g.dart';
 
@@ -343,20 +345,24 @@ class TransactionListTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CurrencyDisplayer(
-                      amountToConvert: transaction.value,
-                      currency: transaction.account.currency,
-                      integerStyle: TextStyle(
-                        color: transaction.status == TransactionStatus.voided
-                            ? Colors.grey.shade400
-                            : transaction.isIncomeOrExpense
-                            ? transaction.type.color(context)
-                            : null,
-                        decoration:
-                            transaction.status == TransactionStatus.voided
-                            ? TextDecoration.lineThrough
-                            : null,
-                        fontWeight: FontWeight.bold,
+                    // FORK: hide income by default
+                    IncomeMask(
+                      enabled: transaction.type == TransactionType.income,
+                      child: CurrencyDisplayer(
+                        amountToConvert: transaction.value,
+                        currency: transaction.account.currency,
+                        integerStyle: TextStyle(
+                          color: transaction.status == TransactionStatus.voided
+                              ? Colors.grey.shade400
+                              : transaction.isIncomeOrExpense
+                              ? transaction.type.color(context)
+                              : null,
+                          decoration:
+                              transaction.status == TransactionStatus.voided
+                              ? TextDecoration.lineThrough
+                              : null,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     Text(
@@ -419,23 +425,27 @@ class TransactionListTile extends StatelessWidget {
               ],
             ),
           ),
-          CurrencyDisplayer(
-            amountToConvert: periodicityInfo != null
-                ? transaction.getUnifiedMoneyForAPeriod(
-                    periodicity: periodicityInfo!,
-                  )
-                : transaction.value,
-            currency: transaction.account.currency,
-            integerStyle: TextStyle(
-              color: transaction.status == TransactionStatus.voided
-                  ? Colors.grey.shade400
-                  : transaction.isIncomeOrExpense
-                  ? transaction.type.color(context)
-                  : null,
-              decoration: transaction.status == TransactionStatus.voided
-                  ? TextDecoration.lineThrough
-                  : null,
-              fontWeight: FontWeight.bold,
+          // FORK: hide income by default
+          IncomeMask(
+            enabled: transaction.type == TransactionType.income,
+            child: CurrencyDisplayer(
+              amountToConvert: periodicityInfo != null
+                  ? transaction.getUnifiedMoneyForAPeriod(
+                      periodicity: periodicityInfo!,
+                    )
+                  : transaction.value,
+              currency: transaction.account.currency,
+              integerStyle: TextStyle(
+                color: transaction.status == TransactionStatus.voided
+                    ? Colors.grey.shade400
+                    : transaction.isIncomeOrExpense
+                    ? transaction.type.color(context)
+                    : null,
+                decoration: transaction.status == TransactionStatus.voided
+                    ? TextDecoration.lineThrough
+                    : null,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],

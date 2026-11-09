@@ -6,6 +6,7 @@ import 'package:monekin/core/models/transaction/transaction_type.enum.dart';
 import 'package:monekin/core/presentation/app_colors.dart';
 import 'package:monekin/core/presentation/responsive/breakpoints.dart';
 import 'package:monekin/core/presentation/styles/borders.dart';
+import 'package:monekin/core/presentation/widgets/income_mask.dart';
 import 'package:monekin/core/presentation/widgets/number_ui_formatters/currency_displayer.dart';
 import 'package:monekin/core/presentation/widgets/transaction_filter/transaction_filter_set.dart';
 import 'package:monekin/core/presentation/widgets/trending_value.dart';
@@ -71,6 +72,10 @@ class IncomeExpenseFlowCard extends StatelessWidget {
         ? _balanceStream(_filtersForDates(prevStart, prevEnd))
         : Stream.value(0.0);
 
+    // FORK: hide income by default
+    Widget mask(Widget w) =>
+        IncomeMask(enabled: type == TransactionType.income, child: w);
+
     return DecoratedBox(
       decoration: cardSurfaceDecoration(context),
       child: Padding(
@@ -128,24 +133,26 @@ class IncomeExpenseFlowCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (isWide && trend != null) trend,
+                    if (isWide && trend != null) mask(trend),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Skeletonizer(
                   enabled: !hasData,
-                  child: CurrencyDisplayer(
-                    amountToConvert: hasData ? currentAbs : 9999,
-                    currency: currency,
-                    compactView: currentAbs >= 100000,
-                    showDecimals: false,
-                    integerStyle: Theme.of(context).textTheme.headlineSmall!
-                        .copyWith(fontWeight: FontWeight.bold),
+                  child: mask(
+                    CurrencyDisplayer(
+                      amountToConvert: hasData ? currentAbs : 9999,
+                      currency: currency,
+                      compactView: currentAbs >= 100000,
+                      showDecimals: false,
+                      integerStyle: Theme.of(context).textTheme.headlineSmall!
+                          .copyWith(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
                 if (!isWide && trend != null) ...[
                   const SizedBox(height: 6),
-                  trend,
+                  mask(trend),
                 ],
               ],
             );
