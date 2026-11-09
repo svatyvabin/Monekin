@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:monekin/app/goals/goal_form_page.dart';
 import 'package:monekin/app/layout/page_framework.dart';
 import 'package:monekin/app/stats/widgets/movements_distribution/pie_chart_by_categories.dart';
@@ -8,6 +8,8 @@ import 'package:monekin/core/database/services/goal/goal_service.dart';
 import 'package:monekin/core/models/date-utils/date_period.dart';
 import 'package:monekin/core/models/date-utils/date_period_state.dart';
 import 'package:monekin/core/models/goal/goal.dart';
+import 'package:monekin/core/models/goal/goal_type.enum.dart';
+import 'package:monekin/core/models/transaction/transaction_type.enum.dart';
 import 'package:monekin/core/presentation/helpers/snackbar.dart';
 import 'package:monekin/core/presentation/responsive/breakpoints.dart';
 import 'package:monekin/core/presentation/responsive/responsive_row_column.dart';
@@ -207,6 +209,11 @@ class _GoalDetailsPageState extends State<GoalDetailsPage>
                               body: PieChartByCategories(
                                 filters: goal.trFilters,
                                 datePeriodState: periodState,
+                                includeTransfers: true,
+                                initialSelectedType:
+                                    goal.type == GoalType.expense
+                                    ? TransactionType.expense
+                                    : TransactionType.income,
                               ),
                             ),
                           ),

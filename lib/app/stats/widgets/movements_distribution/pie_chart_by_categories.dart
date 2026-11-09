@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:intl/intl.dart';
 import 'package:monekin/app/stats/widgets/movements_distribution/category_stats_modal.dart';
 import 'package:monekin/app/stats/widgets/movements_distribution/tr_distribution_chart_item.dart';
@@ -31,6 +31,7 @@ class PieChartByCategories extends StatefulWidget {
     this.showList = false,
     this.initialSelectedType = TransactionType.expense,
     this.filters = const TransactionFilterSet(),
+    this.includeTransfers = false,
   });
 
   final DatePeriodState datePeriodState;
@@ -40,6 +41,10 @@ class PieChartByCategories extends StatefulWidget {
   final TransactionType initialSelectedType;
 
   final TransactionFilterSet filters;
+
+  /// Adds a slice with the transfers leaving (expense tab) or entering (income
+  /// tab) the accounts of [filters]. Transfers between those accounts are ignored
+  final bool includeTransfers;
 
   @override
   State<PieChartByCategories> createState() => _PieChartByCategoriesState();
@@ -52,16 +57,47 @@ class _PieChartByCategoriesState extends State<PieChartByCategories> {
   final centerRadius = 35;
 
   TransactionFilterSet _getTransactionFilters() {
+    final hasConflictingRecurrenceFilter = widget.filters.isRecurrent == true;
+
     return widget.filters.copyWith(
+      transactionTypes: hasConflictingRecurrenceFilter
+          ? []
+          : [
+                  transactionsType,
+                  if (widget.includeTransfers) TransactionType.transfer,
+                ]
+                .intersectionWithNullable(widget.filters.transactionTypes)
+                .toList(),
+      minDate: widget.datePeriodState.startDate,
+      maxDate: widget.datePeriodState.endDate,
       status: TransactionStatus.getStatusThatCountsForStats(
         widget.filters.status,
       ),
-      transactionTypes: [
-        transactionsType,
-      ].intersectionWithNullable(widget.filters.transactionTypes).toList(),
-      minDate: widget.datePeriodState.startDate,
-      maxDate: widget.datePeriodState.endDate,
+      isRecurrent: false,
     );
+  }
+
+  /// Whether the transfer moves money in the direction of the selected tab,
+  /// across the boundary of the filtered accounts
+  bool _isTransferInSelectedDirection(MoneyTransaction transfer) {
+    final accountsIDs = widget.filters.accountsIDs;
+    if (accountsIDs == null) return false;
+
+    final isFromFiltered = accountsIDs.contains(transfer.account.id);
+    final isToFiltered = accountsIDs.contains(transfer.receivingAccount?.id);
+
+    return transactionsType == TransactionType.expense
+        ? isFromFiltered && !isToFiltered
+        : isToFiltered && !isFromFiltered;
+  }
+
+  double _transferValue(MoneyTransaction transfer) {
+    if (transactionsType == TransactionType.expense) {
+      return transfer.currentValueInPreferredCurrency;
+    }
+
+    return transfer.currentValueInDestinyInPreferredCurrency ??
+        transfer.currentValueInPreferredCurrency;
   }
 
   Future<List<TrDistributionChartItem<Category>>> getEvolutionData(
@@ -70,7 +106,28 @@ class _PieChartByCategoriesState extends State<PieChartByCategories> {
   ) async {
     final data = <TrDistributionChartItem<Category>>[];
 
-    for (final transaction in transactions) {
+    final transfers = transactions
+        .where((tr) => tr.isTransfer && _isTransferInSelectedDirection(tr))
+        .toList();
+
+    if (transfers.isNotEmpty) {
+      data.add(
+        TrDistributionChartItem(
+          category: Category(
+            id: 'transfers',
+            name: TransactionType.transfer.displayName(context, plural: true),
+            iconId: 'savings',
+            displayOrder: 0,
+            color: TransactionType.transfer.color(context).toHex(),
+            type: CategoryType.B,
+          ),
+          transactions: transfers,
+          value: transfers.map(_transferValue).sum,
+        ),
+      );
+    }
+
+    for (final transaction in transactions.whereNot((tr) => tr.isTransfer)) {
       final trValue =
           transaction.currentValueInPreferredCurrency *
           (transactionsType == TransactionType.expense ? -1 : 1);
@@ -222,7 +279,7 @@ class _PieChartByCategoriesState extends State<PieChartByCategories> {
 
     return StreamBuilder(
       stream: TransactionService.instance
-          .getTransactions(filters: _getTransactionFilters())
+          .getTransactions(filters: _getTransactionFilters(), onlyPosted: true)
           .asyncMap((data) => getEvolutionData(context, data)),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {

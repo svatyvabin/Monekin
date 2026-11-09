@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:drift/drift.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:monekin/app/accounts/account_selector.dart';
 import 'package:monekin/app/accounts/details/holdings_card.dart';
@@ -23,6 +23,7 @@ import 'package:monekin/core/database/services/user-setting/default_transaction_
 import 'package:monekin/core/database/services/user-setting/user_setting_service.dart';
 import 'package:monekin/core/database/utils/drift_utils.dart';
 import 'package:monekin/core/extensions/color.extensions.dart';
+import 'package:monekin/core/extensions/numbers.extensions.dart';
 import 'package:monekin/core/models/account/account.dart';
 import 'package:monekin/core/models/category/category.dart';
 import 'package:monekin/core/models/debt/debt.dart';
@@ -72,6 +73,8 @@ class TransactionFormController extends ChangeNotifier {
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final GlobalKey<ShakeWidgetState> shakeKey = GlobalKey<ShakeWidgetState>();
+  final GlobalKey dualLegTopCardKey = GlobalKey();
+  final GlobalKey dualLegBottomCardKey = GlobalKey();
 
   final FocusNode amountFocusNode = FocusNode(debugLabel: 'transactionAmount');
   final FocusNode titleFocusNode = FocusNode(debugLabel: 'transactionTitle');
@@ -206,9 +209,7 @@ class TransactionFormController extends ChangeNotifier {
     final decimals = fromAccount?.currency.decimalPlaces ?? 2;
     tradeTotalController.text = _plainNumber(
       double.parse(
-        (securityTradeTotal * _securityToAccountRate).toStringAsFixed(
-          decimals,
-        ),
+        (securityTradeTotal * _securityToAccountRate).toStringAsFixed(decimals),
       ),
     );
   }
@@ -281,6 +282,23 @@ class TransactionFormController extends ChangeNotifier {
 
   Account? get effectiveTransferToAccount =>
       _dualLegFlowReversed ? fromAccount : transferAccount;
+
+  /// Rate to convert the transfer amount from the origin to the destination
+  /// currency at [date] (1 when they match or an account is missing).
+  Stream<double> get transferRate {
+    final from = effectiveTransferFromAccount;
+    final to = effectiveTransferToAccount;
+
+    if (from == null || to == null || from.currency.code == to.currency.code) {
+      return Stream.value(1);
+    }
+
+    return ExchangeRateService.instance.calculateExchangeRate(
+      fromCurrency: from.currency.code,
+      toCurrency: to.currency.code,
+      date: date,
+    );
+  }
 
   MoneyTransaction? get transactionToEdit => _transactionToEdit;
   Debt? get linkedDebt => _linkedDebt;
@@ -736,6 +754,15 @@ class TransactionFormController extends ChangeNotifier {
       return;
     }
 
+    if (transactionType.isTransfer && fromAccount?.id == transferAccount?.id) {
+      MonekinSnackbar.warning(
+        SnackbarParams(
+          t.transaction.form.validators.transfer_between_same_accounts,
+        ),
+      );
+      return;
+    }
+
     final newTrID = _transactionToEdit?.id ?? generateUUID();
 
     final double signedValue;
@@ -751,6 +778,18 @@ class TransactionFormController extends ChangeNotifier {
     final postingFrom = transactionType.isTransfer
         ? effectiveTransferFromAccount
         : fromAccount;
+
+    // Without it the balance would credit the origin amount unconverted
+    double? valueInDestiny = valueInDestinyToNumber;
+    final transferTo = effectiveTransferToAccount;
+
+    if (transactionType.isTransfer &&
+        valueInDestiny == null &&
+        transferTo != null &&
+        transferTo.currency.code != postingFrom!.currency.code) {
+      valueInDestiny = (transactionValue.abs() * await transferRate.first)
+          .roundWithDecimals(transferTo.currency.decimalPlaces);
+    }
 
     final transactionToPost = TransactionInDB(
       id: newTrID,
@@ -769,9 +808,7 @@ class TransactionFormController extends ChangeNotifier {
       endDate: recurrentRule.ruleRecurrentLimit?.endDate,
       remainingTransactions:
           recurrentRule.ruleRecurrentLimit?.remainingIterations,
-      valueInDestiny: transactionType.isTransfer
-          ? valueInDestinyToNumber
-          : null,
+      valueInDestiny: transactionType.isTransfer ? valueInDestiny : null,
       categoryID: transactionType.isIncomeOrExpense
           ? selectedCategory?.id
           : null,
@@ -1211,7 +1248,9 @@ class TransactionFormController extends ChangeNotifier {
   void openTransferSourceAmountSelector(BuildContext context) {
     final tr = Translations.of(context);
     RouteUtils.showResponsiveModal<void>(
-      context,
+      (dualLegTopIsOutflow ? dualLegTopCardKey : dualLegBottomCardKey)
+              .currentContext ??
+          context,
       builder: (ctx) => AmountSelector(
         title: tr.transaction.form.value,
         initialAmount: transactionValue.abs(),
@@ -1235,7 +1274,9 @@ class TransactionFormController extends ChangeNotifier {
     final tr = Translations.of(context);
     final initial = valueInDestinyToNumber ?? defaultDestinationAmount;
     RouteUtils.showResponsiveModal<void>(
-      context,
+      (dualLegTopIsOutflow ? dualLegBottomCardKey : dualLegTopCardKey)
+              .currentContext ??
+          context,
       builder: (ctx) => AmountSelector(
         title: tr.transfer.form.value_in_destiny.title,
         initialAmount: initial,

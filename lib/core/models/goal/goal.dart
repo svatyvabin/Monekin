@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:monekin/core/database/app_db.dart';
 import 'package:monekin/core/models/date-utils/date_period.dart';
 import 'package:monekin/core/models/date-utils/date_period_state.dart';
@@ -50,8 +50,8 @@ class Goal extends GoalInDB
           _dbTrFilters.status,
         ),
         transactionTypes: type == GoalType.expense
-            ? [TransactionType.expense]
-            : [TransactionType.income],
+            ? [TransactionType.expense, TransactionType.transfer]
+            : TransactionType.values,
         minDate: startDate,
         maxDate: endDate,
       );
