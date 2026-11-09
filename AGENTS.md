@@ -293,7 +293,7 @@ This repo is a personal fork; full rules in `docs/FORK_DEV_GUIDE.md`, ledger in 
 - Format only changed files; never `dart format .` repo-wide.
 - Custom DB data goes in new `x_`-prefixed tables; don't alter upstream tables. A migration may be written when the task requires it; record it in `docs/FORK.md`.
 - Custom i18n keys live under `fork.*`.
-- Update `docs/FORK.md` when adding features, touching upstream files, or adding tables.
+- **Every functional change (new feature, behavior change, fix, schema change) must be recorded in `docs/FORK.md` in the same commit/PR as the code.** Add a row to "Change log" (date, summary, files/modules, branch/commit); also update "Custom features", "Modified upstream files" and "Custom tables / migrations" when affected. A task is not done until the ledger is updated.
 
 ---
 

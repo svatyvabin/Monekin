@@ -75,7 +75,10 @@ Sync on every upstream release, or every 2-4 weeks at most.
 - [ ] Changed screens verified on Android or Windows
 - [ ] Schema changes: upgrade from an old DB and backup restore verified
 - [ ] Upstream-file edits are minimal and marked `// FORK:`
+- [ ] `docs/FORK.md` change log (and related tables) updated
 
 ## 9. Fork ledger
 
-Keep `docs/FORK.md` up to date with: custom features, modified upstream files, custom tables/migrations, and known behavior differences from upstream.
+Keep `docs/FORK.md` up to date with: a change log, custom features, modified upstream files, custom tables/migrations, and known behavior differences from upstream.
+
+**Rule:** every functional change (feature, behavior change, fix, schema change) is recorded in the "Change log" of `docs/FORK.md` in the same commit as the code. The change is not complete until the ledger is updated.
