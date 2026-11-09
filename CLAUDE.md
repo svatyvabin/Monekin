@@ -9,6 +9,12 @@
 - 代码里的标识符和注释跟随周围代码的风格（英文）。面向用户的文字走翻译文件，不要硬编码。
 - 修改中文词条前先读 `docs/FORK_DEV_GUIDE.md` 的「简体中文（`zh-CN`）规范」，术语和称呼要保持一致。
 
+## 环境目录
+
+- 本机的 Android / Flutter 环境默认使用 `../android-env/`（即 `/media/ubuntu/sys/project/android-env/`），不在仓库里。
+- 使用前先 `source ../android-env/env.sh`（JDK 21、Flutter、Android SDK、Gradle 缓存、代理）；构建用 `../android-env/build-apk.sh`；测试备份库、模拟器日志、截图也都在这个目录。
+- 这里用普通路径引用，不用 `@` 导入：它是目录，不是文档，导入会出错或把无关内容塞进上下文。
+
 ## 相关文档
 
 @AGENTS.md

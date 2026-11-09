@@ -173,9 +173,11 @@ adb shell cmd locale set-app-locales com.weibin.monekin --locales zh-CN
 
 ## 11. CI（GitHub Actions）
 
-`.github/workflows/build-apk.yml`（来自 `claude/relaxed-fermat-kzr28j` 分支）：构建 release APK 并作为产物上传。
+`.github/workflows/build-apk.yml`（来自 `claude/relaxed-fermat-kzr28j` 分支）：构建 release APK，并作为产物 `monekin-apk` 上传。
 
-- 触发方式：手动触发（`workflow_dispatch`），或向 `claude/relaxed-fermat-kzr28j` 分支推送并且改动了这个工作流文件。
+- 触发方式：向 `custom` 分支推送，或手动触发（`workflow_dispatch`）。Flutter 版本固定为 `3.47.x`，与 `flutter-checks.yml` 一致（`pubspec.yaml` 里的版本现在是范围，`flutter-version-file` 读不了）。
 - 签名：配置了 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD` 这四个 secret 时用它们签名；没配置时用一次性密钥签名，APK 可以安装，但每次的签名都不同，不能用来覆盖升级。
-- 本机的签名密钥在 `~/.android-keys/monekin/`（`monekin-release.jks`、`ANDROID_KEYSTORE_BASE64.txt`、`secrets.txt`，权限 600），不在仓库里，也不要提交（`.gitignore` 已忽略 `*.jks`）。别名 `monekin`，证书 SHA-256 指纹 `67b86a5e…519a`（完整值：`67:b8:6a:5e:b4:68:18:e6:28:ec:51:24:9e:2f:f3:d6:41:d1:bb:5a:b1:79:41:bb:ef:26:02:c9:52:8e:51:9a`）。**这把密钥和密码一旦丢失，已安装的应用就无法再覆盖升级**，请另外备份到安全的地方。
-- 已知限制：GitHub 要求 `workflow_dispatch` 的工作流文件必须存在于**默认分支**上才能手动触发，而本 fork 的默认分支是 `main`（上游镜像，不在上面开发）。所以目前在 `custom` 上这个工作流还不能从 Actions 页面手动运行。需要在「把它放到 `main`」和「把 push 触发改到 `custom`」之间选择一种。
+- 本机的签名密钥在 `~/.android-keys/monekin/`（`monekin-release.jks`、`ANDROID_KEYSTORE_BASE64.txt`、`secrets.txt`，权限 600），不在仓库里，也不要提交（`.gitignore` 已忽略 `*.jks`）。项目内还有一份副本：`android/keys/monekin-release.jks` 与 `android/keys/key.properties`（`storeFile=../keys/monekin-release.jks`，相对于 `android/app`），均被 `android/.gitignore` 忽略，不会提交；有它们时 `flutter build apk --release` 直接用这把密钥签名，可覆盖安装手机上的版本。别名 `monekin`，证书 SHA-256 指纹 `67b86a5e…519a`（完整值：`67:b8:6a:5e:b4:68:18:e6:28:ec:51:24:9e:2f:f3:d6:41:d1:bb:5a:b1:79:41:bb:ef:26:02:c9:52:8e:51:9a`）。**这把密钥和密码一旦丢失，已安装的应用就无法再覆盖升级**，请另外备份到安全的地方。
+- 签名核对：工作流会在注解里输出签名证书的 SHA-256，并说明用的是仓库密钥还是一次性密钥。已验证 Actions 产物与本地用同一把密钥打的 release 包指纹一致（`67b86a5e…519a`），可以互相覆盖安装（前提是包名相同）。
+- 产物里的包名取决于 `custom` 上的代码：功能分支（含 `com.weibin.monekin`）合并进 `custom` 之前，产物仍是 `com.monekin.app`。
+- 已知限制：GitHub 要求 `workflow_dispatch` 的工作流文件必须存在于**默认分支**上才能从 Actions 页面手动触发，而本 fork 的默认分支是 `main`（上游镜像，不在上面开发）。目前靠推送 `custom` 触发，不受影响。

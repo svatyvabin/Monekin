@@ -8,6 +8,10 @@
 
 | 日期 | 类型（feat/fix/change/schema） | 摘要 | 文件 / 模块 | 分支 / 提交 |
 | --- | --- | --- | --- | --- |
+| 2026-11-09 | change | 本地签名：release 密钥副本放入 `android/keys/`（已被 git 忽略），配置 `key.properties`，本地 release 包与 Actions 产物签名一致，可覆盖安装 | `android/keys/`（不入库）、`docs/FORK_DEV_GUIDE.md` | `my/feature-ui-tweaks` |
+| 2026-11-09 | change | 文档：`CLAUDE.md` 增加「环境目录」，说明默认使用 `../android-env/` | `CLAUDE.md` | `my/feature-ui-tweaks` |
+| 2026-11-09 | fix | 交易表单：金额框跳到标题框时先取消焦点、下一帧再聚焦，让输入法重新读取标题框的文字键盘类型（此前仍显示数字键盘） | `lib/app/transactions/form/widgets/transaction_form_amount_block.dart` | `my/feature-ui-tweaks` |
+| 2026-11-09 | change | CI：构建 APK 的工作流改为推送 `custom` 时运行，Flutter 版本固定为 `3.47.x`，并在注解中输出签名证书指纹用于核对；已配置 4 个签名 Secrets，Actions 产物与本地 release 包签名一致 | `.github/workflows/build-apk.yml` | `custom`（`f71fa3c5`、`9465c9f5`） |
 | 2026-11-09 | change | Android 包名改为 `com.weibin.monekin`（只改 `applicationId`），可与官方应用共存；这是另一个应用，数据不共享，首次安装需用「恢复备份」导入 | `android/app/build.gradle` | `my/feature-ui-tweaks` |
 | 2026-11-09 | change | 文档：`FORK.md`、`FORK_DEV_GUIDE.md` 改为中文，并补充中文翻译规范、本地 Android 测试和 CI 说明；新增项目根目录 `CLAUDE.md`，默认使用中文并关联相关文档 | `CLAUDE.md`、`docs/FORK.md`、`docs/FORK_DEV_GUIDE.md` | `my/feature-ui-tweaks` |
 | 2026-11-09 | change | CI：合并 `claude/relaxed-fermat-kzr28j`，新增构建 release APK 的 GitHub Actions 工作流（手动触发；配置 secret 时用正式密钥签名，否则用一次性密钥） | `.github/workflows/build-apk.yml` | `custom`（合并提交 `3484cd0b`） |
@@ -54,5 +58,6 @@
 ## 待处理
 
 - `test/dashboard_refresh_test.dart` 依赖已删除的总余额卡片（`EvolutionCard`、`DashboardBalanceChart`），目前失败，需要改写或跳过。
-- 构建 APK 的工作流还不能从 Actions 页面手动触发（工作流文件不在默认分支 `main` 上），见 `FORK_DEV_GUIDE.md` 第 11 节。
+- 构建 APK 的工作流目前靠推送 `custom` 触发；要从 Actions 页面手动运行，工作流文件还得放到默认分支 `main` 上，见 `FORK_DEV_GUIDE.md` 第 11 节。
+- `custom` 还没有包含 `my/feature-ui-tweaks` 的提交，Actions 产物目前仍是旧功能和官方包名 `com.monekin.app`。
 - `zh-TW.json` 尚未做同样的润色；`zh-Hant-HK` 这类繁体区域目前会被匹配到简体。
