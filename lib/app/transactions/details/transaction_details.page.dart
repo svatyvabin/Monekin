@@ -36,6 +36,7 @@ import 'package:monekin/core/presentation/widgets/number_ui_formatters/ui_number
 import 'package:monekin/core/routes/route_utils.dart';
 import 'package:monekin/core/services/supported_icon/supported_icon_service.dart';
 import 'package:monekin/core/services/view-actions/transaction_view_actions_service.dart';
+import 'package:monekin/core/presentation/widgets/income_mask.dart';
 import 'package:monekin/core/utils/constants.dart';
 import 'package:monekin/i18n/generated/translations.g.dart';
 
@@ -357,9 +358,13 @@ class _TransactionDetailsPageState extends State<TransactionDetailsPage> {
                                     ? TextDecoration.lineThrough
                                     : null,
                               ),
-                          child: CurrencyDisplayer(
-                            amountToConvert: transaction.value,
-                            currency: transaction.account.currency,
+                          // FORK: hide income by default
+                          child: IncomeMask(
+                            enabled: transaction.type == TransactionType.income,
+                            child: CurrencyDisplayer(
+                              amountToConvert: transaction.value,
+                              currency: transaction.account.currency,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -653,14 +658,20 @@ class _TransactionDetailsPageState extends State<TransactionDetailsPage> {
                                               ),
                                             ],
                                           ),
-                                          trailing: CurrencyDisplayer(
-                                            currency: userCurrency,
-                                            integerStyle: const TextStyle(
-                                              fontWeight: FontWeight.bold,
+                                          // FORK: hide income by default
+                                          trailing: IncomeMask(
+                                            enabled:
+                                                transaction.type ==
+                                                TransactionType.income,
+                                            child: CurrencyDisplayer(
+                                              currency: userCurrency,
+                                              integerStyle: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              amountToConvert:
+                                                  snapshot.data! *
+                                                  transaction.value,
                                             ),
-                                            amountToConvert:
-                                                snapshot.data! *
-                                                transaction.value,
                                           ),
                                         );
                                       },
@@ -696,14 +707,20 @@ class _TransactionDetailsPageState extends State<TransactionDetailsPage> {
                                               ),
                                             ],
                                           ),
-                                          trailing: CurrencyDisplayer(
-                                            currency: userCurrency,
-                                            integerStyle: const TextStyle(
-                                              fontWeight: FontWeight.bold,
+                                          // FORK: hide income by default
+                                          trailing: IncomeMask(
+                                            enabled:
+                                                transaction.type ==
+                                                TransactionType.income,
+                                            child: CurrencyDisplayer(
+                                              currency: userCurrency,
+                                              integerStyle: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              amountToConvert:
+                                                  snapshot.data! *
+                                                  transaction.value,
                                             ),
-                                            amountToConvert:
-                                                snapshot.data! *
-                                                transaction.value,
                                           ),
                                         );
                                       },

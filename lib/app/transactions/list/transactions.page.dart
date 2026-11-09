@@ -23,6 +23,7 @@ import 'package:monekin/core/presentation/widgets/filter_row_indicator.dart';
 import 'package:monekin/core/presentation/widgets/no_results.dart';
 import 'package:monekin/core/presentation/widgets/number_ui_formatters/currency_displayer.dart';
 import 'package:monekin/core/presentation/widgets/transaction_filter/filter_side_pane.dart';
+import 'package:monekin/core/presentation/widgets/income_mask.dart';
 import 'package:monekin/core/presentation/widgets/transaction_filter/transaction_filter_set.dart';
 import 'package:monekin/core/presentation/widgets/transaction_filter/transaction_filter_sheet_modal.dart';
 import 'package:monekin/core/routes/route_utils.dart';
@@ -426,16 +427,19 @@ class TransactionsPageState extends State<TransactionsPage> {
     BuildContext context, {
     required double amount,
     Color? color,
+    bool maskIncome = false,
     TextStyle? style,
   }) {
     return DefaultTextStyle(
       style:
           style ??
-          Theme.of(context).textTheme.titleMedium!.copyWith(
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-      child: CurrencyDisplayer(amountToConvert: amount),
+          Theme.of(context).textTheme.titleMedium!
+              .copyWith(fontWeight: FontWeight.bold, color: color),
+      // FORK: hide income by default (the balance reveals it too)
+      child: IncomeMask(
+        enabled: maskIncome,
+        child: CurrencyDisplayer(amountToConvert: amount),
+      ),
     );
   }
 
@@ -474,6 +478,7 @@ class TransactionsPageState extends State<TransactionsPage> {
                 ),
                 value: _summaryAmount(
                   context,
+                  maskIncome: true,
                   amount: data?.income ?? 0,
                   color: TransactionType.income.color(context),
                 ),
@@ -497,6 +502,7 @@ class TransactionsPageState extends State<TransactionsPage> {
                 label: t.general.balance,
                 value: _summaryAmount(
                   context,
+                  maskIncome: true,
                   amount: balance,
                   color:
                       (balance >= 0
@@ -571,15 +577,19 @@ class TransactionsPageState extends State<TransactionsPage> {
                                       .color(context),
                               fontWeight: FontWeight.bold,
                             ),
-                            child: CurrencyDisplayer(
-                              amountToConvert: selSum,
-                              showDecimals: false,
+                            child: IncomeMask(
+                              child: CurrencyDisplayer(
+                                amountToConvert: selSum,
+                                showDecimals: false,
+                              ),
                             ),
                           ),
                           Text(' ${t.general.of} '),
-                          CurrencyDisplayer(
-                            amountToConvert: data?.value ?? 0,
-                            showDecimals: false,
+                          IncomeMask(
+                            child: CurrencyDisplayer(
+                              amountToConvert: data?.value ?? 0,
+                              showDecimals: false,
+                            ),
                           ),
                           Text(' ${t.transaction.list.shown}'),
                         ],
@@ -665,6 +675,7 @@ class TransactionsPageState extends State<TransactionsPage> {
                 ),
                 value: _summaryAmount(
                   context,
+                  maskIncome: true,
                   amount: data?.income ?? 0,
                   color: TransactionType.income.color(context),
                 ),
@@ -688,6 +699,7 @@ class TransactionsPageState extends State<TransactionsPage> {
                 label: t.general.balance,
                 value: _summaryAmount(
                   context,
+                  maskIncome: true,
                   amount: data?.balance ?? 0,
                   style: textTheme.titleLarge!.copyWith(
                     fontWeight: FontWeight.bold,

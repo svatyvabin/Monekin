@@ -20,6 +20,7 @@ import 'package:monekin/core/presentation/widgets/number_ui_formatters/currency_
 import 'package:monekin/core/presentation/widgets/number_ui_formatters/ui_number_formatter.dart';
 import 'package:monekin/core/presentation/widgets/pie_chart_center_shade.dart';
 import 'package:monekin/core/presentation/widgets/transaction_filter/transaction_filter_set.dart';
+import 'package:monekin/core/presentation/widgets/income_mask.dart';
 import 'package:monekin/i18n/generated/translations.g.dart';
 
 import '../../../../core/models/transaction/transaction_type.enum.dart';
@@ -322,119 +323,125 @@ class _PieChartByCategoriesState extends State<PieChartByCategories> {
                 ),
               )
             else
-              AdaptiveTwoColumn(
-                breakpoint: widget.showList ? 520 : double.infinity,
-                rowCrossAxisAlignment: CrossAxisAlignment.center,
-                first: SizedBox(
-                  height: 260,
-                  child: Stack(
-                    children: [
-                      PieChart(
-                        curve: Curves.easeOut,
-                        duration: const Duration(milliseconds: 250),
-                        PieChartData(
-                          startDegreeOffset: -45,
-                          pieTouchData: PieTouchData(
-                            touchCallback:
-                                (FlTouchEvent event, pieTouchResponse) {
-                                  setState(() {
-                                    if (!event.isInterestedForInteractions ||
-                                        pieTouchResponse == null ||
-                                        pieTouchResponse.touchedSection ==
-                                            null) {
-                                      touchedIndex = -1;
-                                      return;
-                                    }
-                                    touchedIndex = pieTouchResponse
-                                        .touchedSection!
-                                        .touchedSectionIndex;
-                                  });
-                                },
-                          ),
-                          borderData: FlBorderData(show: false),
-                          sectionsSpace: 0,
-                          centerSpaceRadius: centerRadius.toDouble(),
-                          sections: showingSections(dataItems),
-                        ),
-                      ),
-                      PieChartCenterShade(
-                        centerSpaceRadius: centerRadius.toDouble(),
-                      ),
-                    ],
-                  ),
-                ),
-                second: widget.showList
-                    ? ListView.builder(
-                        itemCount: snapshot.data!.length,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemBuilder: (context, index) {
-                          final dataCategory = snapshot.data![index];
-
-                          return ListTile(
-                            title: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    dataCategory.category.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                CurrencyDisplayer(
-                                  amountToConvert: dataCategory.value,
-                                ),
-                              ],
+              // FORK: hide income by default
+              IncomeMask(
+                enabled: transactionsType == TransactionType.income,
+                child: AdaptiveTwoColumn(
+                  breakpoint: widget.showList ? 520 : double.infinity,
+                  rowCrossAxisAlignment: CrossAxisAlignment.center,
+                  first: SizedBox(
+                    height: 260,
+                    child: Stack(
+                      children: [
+                        PieChart(
+                          curve: Curves.easeOut,
+                          duration: const Duration(milliseconds: 250),
+                          PieChartData(
+                            startDegreeOffset: -45,
+                            pieTouchData: PieTouchData(
+                              touchCallback:
+                                  (FlTouchEvent event, pieTouchResponse) {
+                                    setState(() {
+                                      if (!event.isInterestedForInteractions ||
+                                          pieTouchResponse == null ||
+                                          pieTouchResponse.touchedSection ==
+                                              null) {
+                                        touchedIndex = -1;
+                                        return;
+                                      }
+                                      touchedIndex = pieTouchResponse
+                                          .touchedSection!
+                                          .touchedSectionIndex;
+                                    });
+                                  },
                             ),
-                            subtitle: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    '${dataCategory.transactions.length} ${t.transaction.display(n: dataCategory.transactions.length)}'
-                                        .toLowerCase(),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  NumberFormat.decimalPercentPattern(
-                                    decimalDigits: 2,
-                                  ).format(
-                                    getElementPercentageInTotal(
-                                      dataCategory.value,
-                                      snapshot.data!,
+                            borderData: FlBorderData(show: false),
+                            sectionsSpace: 0,
+                            centerSpaceRadius: centerRadius.toDouble(),
+                            sections: showingSections(dataItems),
+                          ),
+                        ),
+                        PieChartCenterShade(
+                          centerSpaceRadius: centerRadius.toDouble(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  second: widget.showList
+                      ? ListView.builder(
+                          itemCount: snapshot.data!.length,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemBuilder: (context, index) {
+                            final dataCategory = snapshot.data![index];
+
+                            return ListTile(
+                              title: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      dataCategory.category.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            leading: IconDisplayer.fromCategory(
-                              context,
-                              category: dataCategory.category,
-                              size: 25,
-                            ),
-                            onTap: () {
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                builder: (context) {
-                                  return CategoryStatsModal(
-                                    categoryData: dataCategory,
-                                    dateRangeText: widget.datePeriodState
-                                        .getText(context),
-                                    filters: _getTransactionFilters(),
-                                  );
-                                },
-                              );
-                            },
-                          );
-                        },
-                      )
-                    : const SizedBox.shrink(),
+                                  const SizedBox(width: 8),
+                                  CurrencyDisplayer(
+                                    amountToConvert: dataCategory.value,
+                                  ),
+                                ],
+                              ),
+                              subtitle: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '${dataCategory.transactions.length} ${t.transaction.display(n: dataCategory.transactions.length)}'
+                                          .toLowerCase(),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    NumberFormat.decimalPercentPattern(
+                                      decimalDigits: 2,
+                                    ).format(
+                                      getElementPercentageInTotal(
+                                        dataCategory.value,
+                                        snapshot.data!,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              leading: IconDisplayer.fromCategory(
+                                context,
+                                category: dataCategory.category,
+                                size: 25,
+                              ),
+                              onTap: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  builder: (context) {
+                                    return CategoryStatsModal(
+                                      categoryData: dataCategory,
+                                      dateRangeText: widget.datePeriodState
+                                          .getText(context),
+                                      filters: _getTransactionFilters(),
+                                    );
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        )
+                      : const SizedBox.shrink(),
+                ),
               ),
           ],
         );

@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:monekin/core/database/services/transaction/transaction_service.dart';
 import 'package:monekin/core/extensions/lists.extensions.dart';
 import 'package:monekin/core/presentation/widgets/animated_progress_bar.dart';
+import 'package:monekin/core/presentation/widgets/income_mask.dart';
 import 'package:monekin/core/presentation/widgets/number_ui_formatters/currency_displayer.dart';
 import 'package:monekin/core/presentation/widgets/transaction_filter/transaction_filter_set.dart';
 import 'package:monekin/i18n/generated/translations.g.dart';
@@ -50,11 +51,14 @@ class IncomeExpenseComparason extends StatelessWidget {
                     builder: (context, snapshot) {
                       return Skeletonizer(
                         enabled: !snapshot.hasData,
-                        child: CurrencyDisplayer(
-                          amountToConvert: snapshot.data ?? 22,
-                          integerStyle: Theme.of(
-                            context,
-                          ).textTheme.headlineSmall!,
+                        // FORK: hide income by default (balance reveals it)
+                        child: IncomeMask(
+                          child: CurrencyDisplayer(
+                            amountToConvert: snapshot.data ?? 22,
+                            integerStyle: Theme.of(context)
+                                .textTheme
+                                .headlineSmall!,
+                          ),
                         ),
                       );
                     },
@@ -151,14 +155,21 @@ class IncomeExpenseTile extends StatelessWidget {
                     ? t.transaction.types.expense(n: 1)
                     : t.transaction.types.income(n: 1),
               ),
-              CurrencyDisplayer(amountToConvert: value),
+              // FORK: hide income by default
+              IncomeMask(
+                enabled: type == TransactionType.income,
+                child: CurrencyDisplayer(amountToConvert: value),
+              ),
             ],
           ),
         ],
       ),
-      subtitle: AnimatedProgressBar(
-        value: total > 0 ? max(value / total, 0) : 0,
-        color: type.color(context),
+      // FORK: the bars show the income/expense ratio
+      subtitle: IncomeMask(
+        child: AnimatedProgressBar(
+          value: total > 0 ? max(value / total, 0) : 0,
+          color: type.color(context),
+        ),
       ),
     );
   }
